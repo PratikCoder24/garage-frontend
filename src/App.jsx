@@ -1,11 +1,19 @@
-
+import CustomerPage from "./pages/CustomerPage";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Toast from "./toast/Toast";
 
 function App() {
- 
-
   return (
-    <h1 className="text-3xl text-white bg-amber-500 font-bold text-center p-4">Garage Fronted</h1>
-  )
+    <Router>
+      <div className="min-h-screen bg-gray-50">
+        <Routes>
+          <Route path="/" element={"Home page"} />
+          <Route path="/customers" element={<CustomerPage />} />
+        </Routes>
+      </div>
+      <Toast />
+    </Router>
+  );
 }
 
-export default App
+export default App;

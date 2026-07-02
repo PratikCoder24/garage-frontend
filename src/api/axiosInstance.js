@@ -17,4 +17,4 @@ axiosInstance.interceptors.response.use(
 
 );
 
-export const axiosInstance;
+export default axiosInstance;
