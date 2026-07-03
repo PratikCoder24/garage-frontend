@@ -7,7 +7,6 @@ import CustomerForm from "./CustomerForm";
 const CustomerList = () => {
     const dispatch = useDispatch();
     const { customers, isLoading, error } = useSelector((state) => state.customers);
-
     const [editingId, setEditingId] = useState(null);
     const [editName, setEditName] = useState("");
     const [editPhone, setEditPhone] = useState("");
