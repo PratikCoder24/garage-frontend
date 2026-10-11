@@ -15,7 +15,14 @@ export const addCustomer = createAsyncThunk("/customer/addCustomer", async (data
         const response = await customerApi.addCustomer(data);
         return response.data;
     } catch (error) {
-        return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to add customer!");
+        const data = error.response?.data;
+
+        const message =
+            data?.message ||
+            data?.phone ||
+            "Failed to add customer!";
+
+        return thunkAPI.rejectWithValue(message);
     }
 });
 
