@@ -90,7 +90,7 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
         if (!selectedJobCard) return;
 
         setCondition(selectedJobCard.conditionNotes || "");
-        setDeliveryDate(selectedJobCard.deliveryDate || "");
+        setDeliveryDate(formatDateForInput(selectedJobCard.deliveryDate));
 
         const vehicle = vehicles.find(
             (item) =>
@@ -205,6 +205,18 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
             0
         );
 
+    const formatDateForInput = (date) => {
+        if (!date) return "";
+
+        const parts = date.split("-");
+
+        if (parts[0].length === 2) {
+            const [day, month, year] = parts;
+            return `${year}-${month}-${day}`;
+        }
+        return date;
+    };
+
     const filteredCustomers = useMemo(() => {
         const value = customerSearch
             .trim()
@@ -224,22 +236,23 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
     }, [customers, customerSearch]);
 
     const filteredVehicles = useMemo(() => {
-        const value = vehicleSearch
-            .trim()
-            .toLowerCase();
+        if (!customerId) return [];
 
-        if (!value) {
-            return vehicles.slice(0, 10);
-        }
+        const search = vehicleSearch.trim().toLowerCase();
 
         return vehicles
-            .filter((item) =>
-                getVehicleNumber(item)
-                    .toLowerCase()
-                    .includes(value)
-            )
+            .filter((vehicle) => {
+                const belongsToCustomer =
+                    String(vehicle.customerId) === String(customerId);
+
+                const matchesSearch = (
+                    vehicle.vehicleNumber ?? ""
+                ).toLowerCase().includes(search);
+
+                return belongsToCustomer && matchesSearch;
+            })
             .slice(0, 10);
-    }, [vehicles, vehicleSearch]);
+    }, [vehicles, vehicleSearch, customerId]);
 
     const filteredServices = useMemo(() => {
         const value = serviceSearch
@@ -294,16 +307,16 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
     const grandTotal = serviceTotal + partsTotal;
 
     const selectCustomer = (customer) => {
-        setCustomerId(
-            customer.id ??
-            customer.customerId
-        );
+        const id = customer.id ?? customer.customerId;
 
-        setCustomerSearch(
-            getCustomerName(customer)
-        );
+        setCustomerId(id);
+        setCustomerSearch(getCustomerName(customer));
+
+        setVehicleId("");
+        setVehicleSearch("");
 
         setShowCustomerOptions(false);
+        setShowVehicleOptions(false);
     };
 
     const selectVehicle = (vehicle) => {
@@ -783,24 +796,21 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
 
                                 <input
                                     type="text"
-                                    value={
-                                        vehicleSearch
-                                    }
+                                    value={vehicleSearch}
                                     onChange={(e) => {
-                                        setVehicleSearch(
-                                            e.target.value
-                                        );
-                                        setShowVehicleOptions(
-                                            true
-                                        );
+                                        setVehicleSearch(e.target.value);
+                                        setShowVehicleOptions(Boolean(customerId));
                                     }}
-                                    onFocus={() =>
-                                        setShowVehicleOptions(
-                                            true
-                                        )
+                                    onFocus={() => {
+                                        if (customerId) setShowVehicleOptions(true);
+                                    }}
+                                    placeholder={
+                                        customerId
+                                            ? "Search this customer's vehicles"
+                                            : "Select a customer first"
                                     }
-                                    placeholder="Search vehicle"
-                                    className="w-full rounded-lg border px-3 py-2"
+                                    disabled={!customerId}
+                                    className="w-full rounded-lg border px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100"
                                 />
 
                                 {showVehicleOptions && (
@@ -843,15 +853,8 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
 
                                 <input
                                     type="date"
-                                    value={
-                                        deliveryDate
-                                    }
-                                    onChange={(e) =>
-                                        setDeliveryDate(
-                                            e.target
-                                                .value
-                                        )
-                                    }
+                                    value={deliveryDate}
+                                    onChange={(e) => setDeliveryDate(e.target.value)}
                                     className="w-full rounded-lg border px-3 py-2"
                                 />
                             </div>
