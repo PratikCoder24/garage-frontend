@@ -7,120 +7,73 @@ const InvoiceView = ({ invoice, onBack }) => {
   }
 
   const formatCurrency = (amount) =>
-    `₹${Number(amount || 0).toLocaleString("en-IN", {
+    `₹${Number(amount ?? 0).toLocaleString("en-IN", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
 
-  const services = invoice.services ?? invoice.serviceItems ?? [];
-  const parts = invoice.parts ?? invoice.partsItems ?? [];
+  const services = invoice.services ?? [];
+  const parts = invoice.parts ?? [];
 
-  const serviceTotal = services.reduce(
-    (sum, item) =>
-      sum +
-      Number(
-        item.totalPrice ??
-          item.totalCost ??
-          item.amount ??
-          (Number(item.quantity ?? 1) *
-            Number(item.unitPrice ?? item.price ?? 0))
-      ),
-    0
+  const serviceTotal = Number(
+    invoice.labourCost ??
+    services.reduce(
+      (sum, item) =>
+        sum + Number(item.labourFee ?? item.defaultFee ?? 0),
+      0
+    )
   );
 
-  const partsTotal = parts.reduce(
-    (sum, item) =>
-      sum +
-      Number(
-        item.totalPrice ??
-          item.totalCost ??
-          item.amount ??
-          (Number(item.quantity ?? 1) *
-            Number(item.unitPrice ?? item.price ?? 0))
-      ),
-    0
-  );
-
-  const subtotal = Number(
-    invoice.subtotal ?? invoice.subTotal ?? serviceTotal + partsTotal
-  );
-
-  const tax = Number(
-    invoice.taxAmount ?? invoice.tax ?? invoice.gstAmount ?? 0
+  const partsTotal = Number(
+    invoice.partsCost ??
+    parts.reduce(
+      (sum, item) =>
+        sum +
+        Number(item.quantity ?? 1) *
+        Number(item.priceUsed ?? item.price ?? 0),
+      0
+    )
   );
 
   const grandTotal = Number(
-    invoice.grandTotal ??
-      invoice.totalAmount ??
-      invoice.total ??
-      subtotal + tax
+    invoice.totalAmount ?? serviceTotal + partsTotal
   );
 
   const invoiceNumber =
-    invoice.invoiceNumber ?? invoice.invoiceNo ?? invoice.id ?? "N/A";
+    invoice.invoiceNumber ??
+    invoice.invoiceNo ??
+    invoice.invoiceId ??
+    invoice.id ??
+    "N/A";
 
+  // Customer details must be supplied by the API or parent component.
   const customerName =
     invoice.customerName ?? invoice.customer?.name ?? "N/A";
 
   const customerPhone =
     invoice.customerPhone ?? invoice.customer?.phone ?? "N/A";
 
-  const vehicleName =
-    invoice.vehicleName ?? invoice.vehicle?.model ?? "N/A";
-
-  const registrationNumber =
-    invoice.registrationNumber ??
-    invoice.vehicle?.registrationNumber ??
-    "N/A";
-
   const invoiceDate = invoice.invoiceDate ?? invoice.createdAt;
 
-  const renderItems = (items, type) => (
-    <tbody>
-      {items.length > 0 ? (
-        items.map((item, index) => {
-          const quantity = Number(item.quantity ?? 1);
-          const rate = Number(
-            item.unitPrice ?? item.price ?? item.cost ?? 0
-          );
-          const amount = Number(
-            item.totalPrice ??
-              item.totalCost ??
-              item.amount ??
-              quantity * rate
-          );
+  const formatDate = (date) => {
+    if (!date) return "N/A";
 
-          return (
-            <tr key={item.id ?? index}>
-              <td>{index + 1}</td>
-              <td>
-                {type === "service"
-                  ? item.serviceName ??
-                    item.name ??
-                    item.description ??
-                    "Service"
-                  : item.partName ??
-                    item.name ??
-                    item.description ??
-                    "Spare part"}
-              </td>
-              <td>{quantity}</td>
-              <td>{formatCurrency(rate)}</td>
-              <td className="amount-column">
-                {formatCurrency(amount)}
-              </td>
-            </tr>
-          );
-        })
-      ) : (
-        <tr>
-          <td colSpan="5" className="invoice-empty">
-            No items available
-          </td>
-        </tr>
-      )}
-    </tbody>
-  );
+    // Handles dates in DD-MM-YYYY format.
+    if (/^\d{2}-\d{2}-\d{4}$/.test(date)) {
+      const [day, month, year] = date.split("-");
+      return new Date(
+        Number(year),
+        Number(month) - 1,
+        Number(day)
+      ).toLocaleDateString("en-IN");
+    }
+
+    const parsedDate = new Date(date);
+
+    return Number.isNaN(parsedDate.getTime())
+      ? date
+      : parsedDate.toLocaleDateString("en-IN");
+  };
 
   return (
     <div className="invoice-page">
@@ -146,24 +99,19 @@ const InvoiceView = ({ invoice, onBack }) => {
         <header className="invoice-header">
           <div>
             <h1>Ramnath Automobiles</h1>
-            <p>Ramnath Automobiles,bijlinagar-Rd,chinhcwad,Pune</p>
+            <p>Ramnath Automobiles, Bijlinagar Road, Chinchwad, Pune</p>
             <p>9890136559</p>
           </div>
 
           <div className="invoice-heading">
             <h2>INVOICE</h2>
+
             <p>
               <strong>Invoice No:</strong> {invoiceNumber}
             </p>
+
             <p>
-              <strong>Date:</strong>{" "}
-              {invoiceDate
-                ? new Date(invoiceDate).toLocaleDateString("en-IN")
-                : "N/A"}
-            </p>
-            <p>
-              <strong>Status:</strong>{" "}
-              {invoice.paymentStatus ?? invoice.status ?? "Pending"}
+              <strong>Date:</strong> {formatDate(invoiceDate)}
             </p>
           </div>
         </header>
@@ -173,14 +121,15 @@ const InvoiceView = ({ invoice, onBack }) => {
         <section className="invoice-details">
           <div>
             <h3>Bill To</h3>
-            <p>{customerName}</p>
-            <p>Phone: {customerPhone}</p>
+            <p>{invoice.customerName || "N/A"}</p>
+            <p>{invoice.customerPhone || "N/A"}</p>
           </div>
-
+          
           <div>
-            <h3>Vehicle Details</h3>
-            <p>{vehicleName}</p>
-            <p>Registration: {registrationNumber}</p>
+            <h3 className="font-semibold">Vehicle Details</h3>
+            <p>Registration: {invoice.vehicleNumber || "N/A"}</p>
+            <p>Company: {invoice.vehicleCompany || "N/A"}</p>
+            <p>Model: {invoice.vehicleModel || "N/A"}</p>
           </div>
         </section>
 
@@ -198,7 +147,35 @@ const InvoiceView = ({ invoice, onBack }) => {
               </tr>
             </thead>
 
-            {renderItems(services, "service")}
+            <tbody>
+              {services.length > 0 ? (
+                services.map((item, index) => {
+                  const quantity = Number(item.quantity ?? 1);
+                  const rate = Number(
+                    item.labourFee ?? item.defaultFee ?? 0
+                  );
+                  const amount = rate * quantity;
+
+                  return (
+                    <tr key={item.id ?? index}>
+                      <td>{index + 1}</td>
+                      <td>{item.serviceName ?? "Service"}</td>
+                      <td>{quantity}</td>
+                      <td>{formatCurrency(rate)}</td>
+                      <td className="amount-column">
+                        {formatCurrency(amount)}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="5" className="invoice-empty">
+                    No services available
+                  </td>
+                </tr>
+              )}
+            </tbody>
           </table>
         </section>
 
@@ -216,7 +193,35 @@ const InvoiceView = ({ invoice, onBack }) => {
               </tr>
             </thead>
 
-            {renderItems(parts, "part")}
+            <tbody>
+              {parts.length > 0 ? (
+                parts.map((item, index) => {
+                  const quantity = Number(item.quantity ?? 1);
+                  const rate = Number(
+                    item.priceUsed ?? item.price ?? 0
+                  );
+                  const amount = quantity * rate;
+
+                  return (
+                    <tr key={item.id ?? index}>
+                      <td>{index + 1}</td>
+                      <td>{item.partName ?? "Spare part"}</td>
+                      <td>{quantity}</td>
+                      <td>{formatCurrency(rate)}</td>
+                      <td className="amount-column">
+                        {formatCurrency(amount)}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="5" className="invoice-empty">
+                    No spare parts available
+                  </td>
+                </tr>
+              )}
+            </tbody>
           </table>
         </section>
 
@@ -231,16 +236,6 @@ const InvoiceView = ({ invoice, onBack }) => {
             <span>{formatCurrency(partsTotal)}</span>
           </div>
 
-          <div>
-            <span>Subtotal</span>
-            <span>{formatCurrency(subtotal)}</span>
-          </div>
-
-          <div>
-            <span>Tax / GST</span>
-            <span>{formatCurrency(tax)}</span>
-          </div>
-
           <div className="invoice-grand-total">
             <strong>Grand Total</strong>
             <strong>{formatCurrency(grandTotal)}</strong>
@@ -249,7 +244,6 @@ const InvoiceView = ({ invoice, onBack }) => {
 
         <footer className="invoice-footer">
           <p>Thank you for choosing our garage!</p>
-          <p>This is a computer-generated invoice.</p>
         </footer>
       </div>
     </div>
