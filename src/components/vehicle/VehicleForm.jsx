@@ -62,7 +62,7 @@ const VehicleForm = ({ isOpen, onClose }) => {
     const handleSubmit = async (e) => {
         e.preventDefault()
 
-        if (!model || !companyName || !vehicleNumber || !chassisNumber || !engineNumber || !odometer || !customerId) {
+        if (!model || !companyName || !vehicleNumber || !customerId) {
             errorToast("Please fill in all fields!!")
             return;
         }

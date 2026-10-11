@@ -142,8 +142,7 @@ const VehicleLists = () => {
     };
 
     const handleUpdate = async (id) => {
-        if (!editModel.trim() || !editCompany.trim() || !editVehicleNumber.trim() ||
-            !editChassisNumber.trim() || !editEngineNumber.trim() || !editOdometer) {
+        if (!editModel.trim() || !editCompany.trim() || !editVehicleNumber.trim() || !editCustomerId) {
             errorToast("Please fill in all fields");
             return;
         }
