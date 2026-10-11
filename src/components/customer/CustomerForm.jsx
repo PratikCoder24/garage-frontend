@@ -52,7 +52,11 @@ const CustomerForm = ({ isOpen, onClose }) => {
             successToast("Customer added successfully!");
             handleClose();
         } catch (error) {
-            errorToast(error || "Something went wrong!");
+            errorToast(
+                typeof error === "string"
+                    ? error
+                    : error?.message || "Failed to add customer!"
+            );
         }
     };
 
@@ -101,11 +105,10 @@ const CustomerForm = ({ isOpen, onClose }) => {
                             onBlur={handlePhoneBlur}
                             placeholder="10-digit mobile number"
                             maxLength={10}
-                            className={`border rounded-lg px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition ${
-                                phoneWarning
-                                    ? "border-yellow-400 focus:ring-yellow-400"
-                                    : "border-gray-200 focus:ring-blue-500"
-                            }`}
+                            className={`border rounded-lg px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition ${phoneWarning
+                                ? "border-yellow-400 focus:ring-yellow-400"
+                                : "border-gray-200 focus:ring-blue-500"
+                                }`}
                         />
                         {phoneWarning && (
                             <p className="text-xs text-yellow-600 flex items-center gap-1">

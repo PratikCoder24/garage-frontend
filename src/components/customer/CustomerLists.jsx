@@ -6,7 +6,7 @@ import CustomerForm from "./CustomerForm";
 
 const CustomerList = () => {
     const dispatch = useDispatch();
-    const { customers, isLoading, error } = useSelector((state) => state.customers);
+    const { customers, isLoading } = useSelector((state) => state.customers);
     const [editingId, setEditingId] = useState(null);
     const [editName, setEditName] = useState("");
     const [editPhone, setEditPhone] = useState("");
@@ -72,14 +72,6 @@ const CustomerList = () => {
         return (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 flex items-center justify-center">
                 <p className="text-sm text-gray-400">Loading customers...</p>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 flex items-center justify-center">
-                <p className="text-sm text-red-400">{error}</p>
             </div>
         );
     }
