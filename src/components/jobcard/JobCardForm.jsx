@@ -16,26 +16,56 @@ import {
     estimateCost,
 } from "../../features/jobcard/JobCardSlice";
 
+/* ---------- pure helpers (no component state needed) ---------- */
+const getCustomerName = (item) => item?.name ?? item?.customerName ?? "";
+
+const getVehicleNumber = (item) =>
+    item?.vehicleNumber ?? item?.registrationNumber ?? "";
+
+const getServiceName = (item) => item?.serviceName ?? item?.name ?? "";
+
+const getServiceCharge = (item) =>
+    Number(item?.serviceCharge ?? item?.defaultFee ?? item?.labourFee ?? 0);
+
+const getPartName = (item) =>
+    item?.partsName ?? item?.partName ?? item?.name ?? "";
+
+const getPartPrice = (item) => Number(item?.price ?? item?.priceUsed ?? 0);
+
+const formatDateForInput = (date) => {
+    if (!date) return "";
+
+    const parts = date.split("-");
+
+    if (parts[0].length === 2) {
+        const [day, month, year] = parts;
+        return `${year}-${month}-${day}`;
+    }
+    return date;
+};
+
+/* ---------- shared mobile-friendly styles ---------- */
+const inputClass =
+    "w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-base outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100";
+const labelClass = "mb-1.5 block text-sm font-medium text-gray-700";
+const dropdownClass =
+    "absolute z-40 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border bg-white shadow-lg";
+const optionClass =
+    "flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm active:bg-gray-100";
+const removeBtnClass =
+    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-50 text-xl leading-none text-red-500";
+
 const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
     const dispatch = useDispatch();
 
-    const {
-        selectedJobCard,
-        isLoadingSelectedJobCard,
-        isSaving,
-    } = useSelector((state) => state.jobcards);
+    const { selectedJobCard, isLoadingSelectedJobCard, isSaving } =
+        useSelector((state) => state.jobcards);
 
     const customers =
         useSelector((state) => state.customers?.customers) || [];
-
-    const vehicles =
-        useSelector((state) => state.vehicles?.vehicles) || [];
-
-    const services =
-        useSelector((state) => state.services?.services) || [];
-
-    const parts =
-        useSelector((state) => state.parts?.parts) || [];
+    const vehicles = useSelector((state) => state.vehicles?.vehicles) || [];
+    const services = useSelector((state) => state.services?.services) || [];
+    const parts = useSelector((state) => state.parts?.parts) || [];
 
     const [customerId, setCustomerId] = useState("");
     const [vehicleId, setVehicleId] = useState("");
@@ -101,14 +131,11 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
         if (vehicle) {
             setVehicleId(vehicle.id ?? vehicle.vehicleId);
             setVehicleSearch(
-                vehicle.vehicleNumber ??
-                vehicle.registrationNumber ??
-                ""
+                vehicle.vehicleNumber ?? vehicle.registrationNumber ?? ""
             );
 
             const linkedCustomerId =
-                vehicle.customerId ??
-                vehicle.customer?.id;
+                vehicle.customerId ?? vehicle.customer?.id;
 
             if (linkedCustomerId) {
                 setCustomerId(linkedCustomerId);
@@ -121,9 +148,7 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
 
                 if (customer) {
                     setCustomerSearch(
-                        customer.name ??
-                        customer.customerName ??
-                        ""
+                        customer.name ?? customer.customerName ?? ""
                     );
                 }
             }
@@ -139,11 +164,7 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
                 serviceId: item.serviceId,
                 serviceName: item.serviceName || "",
                 defaultFee: Number(item.defaultFee || 0),
-                labourFee: Number(
-                    item.labourFee ??
-                    item.defaultFee ??
-                    0
-                ),
+                labourFee: Number(item.labourFee ?? item.defaultFee ?? 0),
             }))
         );
 
@@ -154,84 +175,18 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
                 partName: item.partName || "",
                 quantity: Number(item.quantity || 1),
                 price: Number(item.price || 0),
-                priceUsed: Number(
-                    item.priceUsed ??
-                    item.price ??
-                    0
-                ),
+                priceUsed: Number(item.priceUsed ?? item.price ?? 0),
             }))
         );
-    }, [
-        isOpen,
-        jobCardId,
-        selectedJobCard,
-        vehicles,
-        customers,
-    ]);
-
-    const getCustomerName = (item) =>
-        item?.name ??
-        item?.customerName ??
-        "";
-
-    const getVehicleNumber = (item) =>
-        item?.vehicleNumber ??
-        item?.registrationNumber ??
-        "";
-
-    const getServiceName = (item) =>
-        item?.serviceName ??
-        item?.name ??
-        "";
-
-    const getServiceCharge = (item) =>
-        Number(
-            item?.serviceCharge ??
-            item?.defaultFee ??
-            item?.labourFee ??
-            0
-        );
-
-    const getPartName = (item) =>
-        item?.partsName ??
-        item?.partName ??
-        item?.name ??
-        "";
-
-    const getPartPrice = (item) =>
-        Number(
-            item?.price ??
-            item?.priceUsed ??
-            0
-        );
-
-    const formatDateForInput = (date) => {
-        if (!date) return "";
-
-        const parts = date.split("-");
-
-        if (parts[0].length === 2) {
-            const [day, month, year] = parts;
-            return `${year}-${month}-${day}`;
-        }
-        return date;
-    };
+    }, [isOpen, jobCardId, selectedJobCard, vehicles, customers]);
 
     const filteredCustomers = useMemo(() => {
-        const value = customerSearch
-            .trim()
-            .toLowerCase();
+        const value = customerSearch.trim().toLowerCase();
 
-        if (!value) {
-            return customers.slice(0, 10);
-        }
+        if (!value) return customers.slice(0, 10);
 
         return customers
-            .filter((item) =>
-                getCustomerName(item)
-                    .toLowerCase()
-                    .includes(value)
-            )
+            .filter((item) => getCustomerName(item).toLowerCase().includes(value))
             .slice(0, 10);
     }, [customers, customerSearch]);
 
@@ -245,9 +200,9 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
                 const belongsToCustomer =
                     String(vehicle.customerId) === String(customerId);
 
-                const matchesSearch = (
-                    vehicle.vehicleNumber ?? ""
-                ).toLowerCase().includes(search);
+                const matchesSearch = (vehicle.vehicleNumber ?? "")
+                    .toLowerCase()
+                    .includes(search);
 
                 return belongsToCustomer && matchesSearch;
             })
@@ -255,52 +210,33 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
     }, [vehicles, vehicleSearch, customerId]);
 
     const filteredServices = useMemo(() => {
-        const value = serviceSearch
-            .trim()
-            .toLowerCase();
+        const value = serviceSearch.trim().toLowerCase();
 
-        if (!value) {
-            return services.slice(0, 10);
-        }
+        if (!value) return services.slice(0, 10);
 
         return services
-            .filter((item) =>
-                getServiceName(item)
-                    .toLowerCase()
-                    .includes(value)
-            )
+            .filter((item) => getServiceName(item).toLowerCase().includes(value))
             .slice(0, 10);
     }, [services, serviceSearch]);
 
     const filteredParts = useMemo(() => {
-        const value = partSearch
-            .trim()
-            .toLowerCase();
+        const value = partSearch.trim().toLowerCase();
 
-        if (!value) {
-            return parts.slice(0, 10);
-        }
+        if (!value) return parts.slice(0, 10);
 
         return parts
-            .filter((item) =>
-                getPartName(item)
-                    .toLowerCase()
-                    .includes(value)
-            )
+            .filter((item) => getPartName(item).toLowerCase().includes(value))
             .slice(0, 10);
     }, [parts, partSearch]);
 
     const serviceTotal = selectedServices.reduce(
-        (total, item) =>
-            total + Number(item.labourFee || 0),
+        (total, item) => total + Number(item.labourFee || 0),
         0
     );
 
     const partsTotal = selectedParts.reduce(
         (total, item) =>
-            total +
-            Number(item.quantity || 0) *
-            Number(item.priceUsed || 0),
+            total + Number(item.quantity || 0) * Number(item.priceUsed || 0),
         0
     );
 
@@ -320,35 +256,22 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
     };
 
     const selectVehicle = (vehicle) => {
-        setVehicleId(
-            vehicle.id ??
-            vehicle.vehicleId
-        );
+        setVehicleId(vehicle.id ?? vehicle.vehicleId);
+        setVehicleSearch(getVehicleNumber(vehicle));
 
-        setVehicleSearch(
-            getVehicleNumber(vehicle)
-        );
-
-        const linkedCustomerId =
-            vehicle.customerId ??
-            vehicle.customer?.id;
+        const linkedCustomerId = vehicle.customerId ?? vehicle.customer?.id;
 
         if (linkedCustomerId) {
             setCustomerId(linkedCustomerId);
 
             const customer = customers.find(
                 (item) =>
-                    String(
-                        item.id ??
-                        item.customerId
-                    ) ===
+                    String(item.id ?? item.customerId) ===
                     String(linkedCustomerId)
             );
 
             if (customer) {
-                setCustomerSearch(
-                    getCustomerName(customer)
-                );
+                setCustomerSearch(getCustomerName(customer));
             }
         }
 
@@ -356,32 +279,18 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
     };
 
     const addService = (service) => {
-        const serviceId =
-            service.id ??
-            service.serviceId;
-
-        const serviceName =
-            service.serviceName ??
-            service.name ??
-            "";
-
-        const serviceCharge =
-            Number(
-                service.serviceCharge ??
-                service.defaultFee ??
-                0
-            );
+        const serviceId = service.id ?? service.serviceId;
+        const serviceName = service.serviceName ?? service.name ?? "";
+        const serviceCharge = Number(
+            service.serviceCharge ?? service.defaultFee ?? 0
+        );
 
         if (
             selectedServices.some(
-                (item) =>
-                    String(item.serviceId) ===
-                    String(serviceId)
+                (item) => String(item.serviceId) === String(serviceId)
             )
         ) {
-            toast.info(
-                "Service already added."
-            );
+            toast.info("Service already added.");
             return;
         }
 
@@ -401,30 +310,14 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
     };
 
     const addPart = (part) => {
-        const partId =
-            part.id ??
-            part.partId;
-
-        const partName =
-            part.partsName ??
-            part.partName ??
-            part.name ??
-            "";
-
-        const price = Number(
-            part.price ?? 0
-        );
+        const partId = part.id ?? part.partId;
+        const partName = part.partsName ?? part.partName ?? part.name ?? "";
+        const price = Number(part.price ?? 0);
 
         if (
-            selectedParts.some(
-                (item) =>
-                    String(item.partId) ===
-                    String(partId)
-            )
+            selectedParts.some((item) => String(item.partId) === String(partId))
         ) {
-            toast.info(
-                "Part already added."
-            );
+            toast.info("Part already added.");
             return;
         }
 
@@ -444,115 +337,64 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
         setShowPartOptions(false);
     };
 
-    const updateServiceFee = (
-        index,
-        value
-    ) => {
+    const updateServiceFee = (index, value) => {
         setSelectedServices((prev) =>
             prev.map((item, i) =>
                 i === index
-                    ? {
-                        ...item,
-                        labourFee:
-                            value === ""
-                                ? ""
-                                : Number(value),
-                    }
+                    ? { ...item, labourFee: value === "" ? "" : Number(value) }
                     : item
             )
         );
     };
 
-    const updatePartQuantity = (
-        index,
-        value
-    ) => {
+    const updatePartQuantity = (index, value) => {
         setSelectedParts((prev) =>
             prev.map((item, i) =>
                 i === index
-                    ? {
-                        ...item,
-                        quantity:
-                            value === ""
-                                ? ""
-                                : Number(value),
-                    }
+                    ? { ...item, quantity: value === "" ? "" : Number(value) }
                     : item
             )
         );
     };
 
-    const updatePartPrice = (
-        index,
-        value
-    ) => {
+    const updatePartPrice = (index, value) => {
         setSelectedParts((prev) =>
             prev.map((item, i) =>
                 i === index
-                    ? {
-                        ...item,
-                        priceUsed:
-                            value === ""
-                                ? ""
-                                : Number(value),
-                    }
+                    ? { ...item, priceUsed: value === "" ? "" : Number(value) }
                     : item
             )
         );
     };
 
     const deleteService = async (index) => {
-        const item =
-            selectedServices[index];
+        const item = selectedServices[index];
 
         if (item.itemId) {
             try {
-                await dispatch(
-                    removeService(
-                        item.itemId
-                    )
-                ).unwrap();
+                await dispatch(removeService(item.itemId)).unwrap();
             } catch (error) {
-                toast.error(
-                    error ||
-                    "Failed to remove service."
-                );
+                toast.error(error || "Failed to remove service.");
                 return;
             }
         }
 
-        setSelectedServices((prev) =>
-            prev.filter(
-                (_, i) => i !== index
-            )
-        );
+        setSelectedServices((prev) => prev.filter((_, i) => i !== index));
     };
 
     const deletePart = async (index) => {
-        const item =
-            selectedParts[index];
+        const item = selectedParts[index];
 
         if (item.itemId) {
             try {
-                await dispatch(
-                    removePart(
-                        item.itemId
-                    )
-                ).unwrap();
+                await dispatch(removePart(item.itemId)).unwrap();
             } catch (error) {
-                toast.error(
-                    error ||
-                    "Failed to remove part."
-                );
+                toast.error(error || "Failed to remove part.");
                 return;
             }
         }
 
-        setSelectedParts((prev) =>
-            prev.filter(
-                (_, i) => i !== index
-            )
-        );
+        setSelectedParts((prev) => prev.filter((_, i) => i !== index));
     };
 
     const saveServices = async (id) => {
@@ -562,26 +404,16 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
                     addServiceToJobCard({
                         jobCardId: id,
                         data: {
-                            serviceId:
-                                service.serviceId,
-                            labourFee:
-                                Number(
-                                    service.labourFee ||
-                                    0
-                                ),
+                            serviceId: service.serviceId,
+                            labourFee: Number(service.labourFee || 0),
                         },
                     })
                 ).unwrap();
             } else {
                 await dispatch(
                     updateLabourFee({
-                        itemId:
-                            service.itemId,
-                        labourFee:
-                            Number(
-                                service.labourFee ||
-                                0
-                            ),
+                        itemId: service.itemId,
+                        labourFee: Number(service.labourFee || 0),
                     })
                 ).unwrap();
             }
@@ -595,31 +427,17 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
                     addPartToJobCard({
                         jobCardId: id,
                         data: {
-                            partId:
-                                part.partId,
-                            quantity:
-                                Number(
-                                    part.quantity ||
-                                    1
-                                ),
-                            priceUsed:
-                                Number(
-                                    part.priceUsed ||
-                                    0
-                                ),
+                            partId: part.partId,
+                            quantity: Number(part.quantity || 1),
+                            priceUsed: Number(part.priceUsed || 0),
                         },
                     })
                 ).unwrap();
             } else {
                 await dispatch(
                     updatePriceUsed({
-                        itemId:
-                            part.itemId,
-                        priceUsed:
-                            Number(
-                                part.priceUsed ||
-                                0
-                            ),
+                        itemId: part.itemId,
+                        priceUsed: Number(part.priceUsed || 0),
                     })
                 ).unwrap();
             }
@@ -630,25 +448,19 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
         e.preventDefault();
 
         if (!vehicleId) {
-            toast.error(
-                "Please select a vehicle."
-            );
+            toast.error("Please select a vehicle.");
             return;
         }
 
         if (!condition.trim()) {
-            toast.error(
-                "Please enter condition notes."
-            );
+            toast.error("Please enter condition notes.");
             return;
         }
 
         const payload = {
             vehicleId: Number(vehicleId),
-            condition:
-                condition.trim(),
-            deliveryDate:
-                deliveryDate || null,
+            condition: condition.trim(),
+            deliveryDate: deliveryDate || null,
         };
 
         try {
@@ -656,25 +468,15 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
 
             if (isEdit) {
                 await dispatch(
-                    updateJobCard({
-                        id: jobCardId,
-                        data: payload,
-                    })
+                    updateJobCard({ id: jobCardId, data: payload })
                 ).unwrap();
             } else {
-                const result =
-                    await dispatch(
-                        createJobCard(
-                            payload
-                        )
-                    ).unwrap();
+                const result = await dispatch(createJobCard(payload)).unwrap();
 
                 id = result?.id;
 
                 if (!id) {
-                    throw new Error(
-                        "Created job card ID was not returned."
-                    );
+                    throw new Error("Created job card ID was not returned.");
                 }
             }
 
@@ -689,11 +491,7 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
 
             onClose();
         } catch (error) {
-            toast.error(
-                error?.message ||
-                error ||
-                "Failed to save job card."
-            );
+            toast.error(error?.message || error || "Failed to save job card.");
         }
     };
 
@@ -702,97 +500,71 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="max-h-[95vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-white shadow-xl">
-                <div className="sticky top-0 z-30 flex items-center justify-between border-b bg-white px-6 py-4">
-                    <h2 className="text-xl font-bold text-gray-800">
-                        {isEdit
-                            ? "Edit Job Card"
-                            : "Create Job Card"}
+        // Bottom sheet on phones, centred card on larger screens.
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+            <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-xl sm:rounded-3xl">
+                {/* header */}
+                <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+                    <h2 className="text-lg font-bold text-gray-900">
+                        {isEdit ? "Edit Job Card" : "Create Job Card"}
                     </h2>
 
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-2xl text-gray-500 hover:text-gray-800"
+                        aria-label="Close"
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-2xl leading-none text-gray-500"
                     >
                         ×
                     </button>
                 </div>
 
-                {isEdit &&
-                    isLoadingSelectedJobCard ? (
+                {isEdit && isLoadingSelectedJobCard ? (
                     <div className="p-10 text-center text-gray-500">
                         Loading job card...
                     </div>
                 ) : (
                     <form
                         onSubmit={handleSubmit}
-                        className="space-y-6 p-6"
+                        className="flex min-h-0 flex-1 flex-col"
                     >
-                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        {/* scrollable fields */}
+                        <div className="flex-1 space-y-5 overflow-y-auto p-4">
+                            {/* customer */}
                             <div className="relative">
-                                <label className="mb-1 block text-sm font-medium text-gray-700">
-                                    Customer
-                                </label>
+                                <label className={labelClass}>Customer</label>
 
                                 <input
                                     type="text"
-                                    value={
-                                        customerSearch
-                                    }
+                                    value={customerSearch}
                                     onChange={(e) => {
-                                        setCustomerSearch(
-                                            e.target.value
-                                        );
-                                        setShowCustomerOptions(
-                                            true
-                                        );
+                                        setCustomerSearch(e.target.value);
+                                        setShowCustomerOptions(true);
                                     }}
-                                    onFocus={() =>
-                                        setShowCustomerOptions(
-                                            true
-                                        )
-                                    }
+                                    onFocus={() => setShowCustomerOptions(true)}
                                     placeholder="Search customer"
-                                    className="w-full rounded-lg border px-3 py-2"
+                                    className={inputClass}
                                 />
 
                                 {showCustomerOptions && (
-                                    <div className="absolute z-40 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border bg-white shadow-lg">
-                                        {filteredCustomers.map(
-                                            (
-                                                customer
-                                            ) => (
-                                                <button
-                                                    key={
-                                                        customer.id ??
-                                                        customer.customerId
-                                                    }
-                                                    type="button"
-                                                    onClick={() =>
-                                                        selectCustomer(
-                                                            customer
-                                                        )
-                                                    }
-                                                    className="block w-full px-3 py-2 text-left hover:bg-gray-100"
-                                                >
-                                                    {
-                                                        getCustomerName(
-                                                            customer
-                                                        )
-                                                    }
-                                                </button>
-                                            )
-                                        )}
+                                    <div className={dropdownClass}>
+                                        {filteredCustomers.map((customer) => (
+                                            <button
+                                                key={customer.id ?? customer.customerId}
+                                                type="button"
+                                                onClick={() => selectCustomer(customer)}
+                                                className={optionClass}
+                                            >
+                                                {getCustomerName(customer)}
+                                            </button>
+                                        ))}
                                     </div>
                                 )}
                             </div>
 
+                            {/* vehicle */}
                             <div className="relative">
-                                <label className="mb-1 block text-sm font-medium text-gray-700">
-                                    Vehicle
-                                </label>
+                                <label className={labelClass}>Vehicle</label>
 
                                 <input
                                     type="text"
@@ -810,407 +582,272 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
                                             : "Select a customer first"
                                     }
                                     disabled={!customerId}
-                                    className="w-full rounded-lg border px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100"
+                                    className={inputClass}
                                 />
 
                                 {showVehicleOptions && (
-                                    <div className="absolute z-40 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border bg-white shadow-lg">
-                                        {filteredVehicles.map(
-                                            (
-                                                vehicle
-                                            ) => (
-                                                <button
-                                                    key={
-                                                        vehicle.id ??
-                                                        vehicle.vehicleId
-                                                    }
-                                                    type="button"
-                                                    onClick={() =>
-                                                        selectVehicle(
-                                                            vehicle
-                                                        )
-                                                    }
-                                                    className="block w-full px-3 py-2 text-left hover:bg-gray-100"
-                                                >
-                                                    {
-                                                        getVehicleNumber(
-                                                            vehicle
-                                                        )
-                                                    }
-                                                </button>
-                                            )
-                                        )}
+                                    <div className={dropdownClass}>
+                                        {filteredVehicles.map((vehicle) => (
+                                            <button
+                                                key={vehicle.id ?? vehicle.vehicleId}
+                                                type="button"
+                                                onClick={() => selectVehicle(vehicle)}
+                                                className={optionClass}
+                                            >
+                                                {getVehicleNumber(vehicle)}
+                                            </button>
+                                        ))}
                                     </div>
                                 )}
                             </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                            {/* delivery date */}
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">
-                                    Delivery Date
-                                </label>
+                                <label className={labelClass}>Delivery Date</label>
 
                                 <input
                                     type="date"
                                     value={deliveryDate}
                                     onChange={(e) => setDeliveryDate(e.target.value)}
-                                    className="w-full rounded-lg border px-3 py-2"
+                                    className={inputClass}
                                 />
                             </div>
 
+                            {/* condition notes */}
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">
-                                    Condition Notes
-                                </label>
+                                <label className={labelClass}>Condition Notes</label>
 
                                 <textarea
-                                    value={
-                                        condition
-                                    }
-                                    onChange={(e) =>
-                                        setCondition(
-                                            e.target
-                                                .value
-                                        )
-                                    }
+                                    value={condition}
+                                    onChange={(e) => setCondition(e.target.value)}
                                     rows={3}
-                                    className="w-full rounded-lg border px-3 py-2"
+                                    placeholder="Describe the vehicle's condition"
+                                    className={inputClass}
                                 />
                             </div>
-                        </div>
 
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700">
-                                Services
-                            </label>
+                            {/* services */}
+                            <div>
+                                <label className={labelClass}>Services</label>
 
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={serviceSearch}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setServiceSearch(value);
-                                        setShowServiceOptions(
-                                            value.trim().length > 0
-                                        );
-                                    }}
-                                    onFocus={() => {
-                                        if (serviceSearch.trim().length > 0) {
-                                            setShowServiceOptions(true);
-                                        }
-                                    }}
-                                    placeholder="Search service"
-                                    className="w-full rounded-lg border px-3 py-2"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={serviceSearch}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setServiceSearch(value);
+                                            setShowServiceOptions(value.trim().length > 0);
+                                        }}
+                                        onFocus={() => {
+                                            if (serviceSearch.trim().length > 0) {
+                                                setShowServiceOptions(true);
+                                            }
+                                        }}
+                                        placeholder="Search service"
+                                        className={inputClass}
+                                    />
 
-                                {showServiceOptions && (
-                                    <div className="absolute z-40 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border bg-white shadow-lg">
-                                        {filteredServices.map(
-                                            (
-                                                service
-                                            ) => (
+                                    {showServiceOptions && (
+                                        <div className={dropdownClass}>
+                                            {filteredServices.map((service) => (
                                                 <button
-                                                    key={
-                                                        service.id ??
-                                                        service.serviceId
-                                                    }
+                                                    key={service.id ?? service.serviceId}
                                                     type="button"
-                                                    onClick={() =>
-                                                        addService(
-                                                            service
-                                                        )
-                                                    }
-                                                    className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-gray-100"
+                                                    onClick={() => addService(service)}
+                                                    className={optionClass}
                                                 >
-                                                    <span>
-                                                        {getServiceName(
-                                                            service
-                                                        )}
-                                                    </span>
-
-                                                    <span className="text-sm text-gray-500">
-                                                        ₹
-                                                        {getServiceCharge(
-                                                            service
-                                                        ).toFixed(
-                                                            2
-                                                        )}
+                                                    <span>{getServiceName(service)}</span>
+                                                    <span className="shrink-0 text-gray-500">
+                                                        ₹{getServiceCharge(service).toFixed(2)}
                                                     </span>
                                                 </button>
-                                            )
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
 
-                            <div className="mt-3 space-y-2">
-                                {selectedServices.map(
-                                    (
-                                        service,
-                                        index
-                                    ) => (
+                                <div className="mt-3 space-y-2">
+                                    {selectedServices.map((service, index) => (
                                         <div
                                             key={
                                                 service.itemId ??
                                                 `service-${service.serviceId}-${index}`
                                             }
-                                            className="grid grid-cols-[1fr_180px_35px] items-center gap-3 rounded-lg border p-3"
+                                            className="rounded-xl border border-gray-200 p-3"
                                         >
-                                            <div>
-                                                <p className="font-medium text-gray-800">
-                                                    {
-                                                        service.serviceName
-                                                    }
-                                                </p>
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <p className="font-medium text-gray-800">
+                                                        {service.serviceName}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400">
+                                                        Default: ₹
+                                                        {Number(service.defaultFee || 0).toFixed(2)}
+                                                    </p>
+                                                </div>
 
-                                                <p className="text-xs text-gray-400">
-                                                    Default: ₹
-                                                    {Number(
-                                                        service.defaultFee ||
-                                                        0
-                                                    ).toFixed(
-                                                        2
-                                                    )}
-                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => deleteService(index)}
+                                                    aria-label="Remove service"
+                                                    className={removeBtnClass}
+                                                >
+                                                    ×
+                                                </button>
                                             </div>
 
+                                            <label className="mt-2 block text-xs text-gray-500">
+                                                Labour fee (₹)
+                                            </label>
                                             <input
                                                 type="number"
+                                                inputMode="decimal"
                                                 min="0"
                                                 step="0.01"
-                                                value={
-                                                    service.labourFee
+                                                value={service.labourFee}
+                                                onChange={(e) =>
+                                                    updateServiceFee(index, e.target.value)
                                                 }
-                                                onChange={(
-                                                    e
-                                                ) =>
-                                                    updateServiceFee(
-                                                        index,
-                                                        e
-                                                            .target
-                                                            .value
-                                                    )
-                                                }
-                                                className="rounded-lg border px-3 py-2"
+                                                className={`${inputClass} mt-1`}
                                             />
-
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    deleteService(
-                                                        index
-                                                    )
-                                                }
-                                                className="text-xl text-red-500"
-                                            >
-                                                ×
-                                            </button>
                                         </div>
-                                    )
-                                )}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
 
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700">
-                                Parts
-                            </label>
+                            {/* parts */}
+                            <div>
+                                <label className={labelClass}>Parts</label>
 
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={partSearch}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setPartSearch(value);
-                                        setShowPartOptions(
-                                            value.trim().length > 0
-                                        );
-                                    }}
-                                    onFocus={() => {
-                                        if (partSearch.trim().length > 0) {
-                                            setShowPartOptions(true);
-                                        }
-                                    }}
-                                    placeholder="Search parts"
-                                    className="w-full rounded-lg border px-3 py-2"
-                                />
-                                {showPartOptions && (
-                                    <div className="absolute z-40 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border bg-white shadow-lg">
-                                        {filteredParts.map(
-                                            (
-                                                part
-                                            ) => (
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={partSearch}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setPartSearch(value);
+                                            setShowPartOptions(value.trim().length > 0);
+                                        }}
+                                        onFocus={() => {
+                                            if (partSearch.trim().length > 0) {
+                                                setShowPartOptions(true);
+                                            }
+                                        }}
+                                        placeholder="Search parts"
+                                        className={inputClass}
+                                    />
+
+                                    {showPartOptions && (
+                                        <div className={dropdownClass}>
+                                            {filteredParts.map((part) => (
                                                 <button
-                                                    key={
-                                                        part.id ??
-                                                        part.partId
-                                                    }
+                                                    key={part.id ?? part.partId}
                                                     type="button"
-                                                    onClick={() =>
-                                                        addPart(
-                                                            part
-                                                        )
-                                                    }
-                                                    className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-gray-100"
+                                                    onClick={() => addPart(part)}
+                                                    className={optionClass}
                                                 >
-                                                    <span>
-                                                        {getPartName(
-                                                            part
-                                                        )}
-                                                    </span>
-
-                                                    <span className="text-sm text-gray-500">
-                                                        ₹
-                                                        {getPartPrice(
-                                                            part
-                                                        ).toFixed(
-                                                            2
-                                                        )}
+                                                    <span>{getPartName(part)}</span>
+                                                    <span className="shrink-0 text-gray-500">
+                                                        ₹{getPartPrice(part).toFixed(2)}
                                                     </span>
                                                 </button>
-                                            )
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
 
-                            <div className="mt-3 space-y-2">
-                                {selectedParts.map(
-                                    (
-                                        part,
-                                        index
-                                    ) => (
+                                <div className="mt-3 space-y-2">
+                                    {selectedParts.map((part, index) => (
                                         <div
-                                            key={
-                                                part.itemId ??
-                                                `part-${part.partId}-${index}`
-                                            }
-                                            className="grid grid-cols-[1fr_100px_160px_35px] items-center gap-3 rounded-lg border p-3"
+                                            key={part.itemId ?? `part-${part.partId}-${index}`}
+                                            className="rounded-xl border border-gray-200 p-3"
                                         >
-                                            <div>
-                                                <p className="font-medium text-gray-800">
-                                                    {
-                                                        part.partName
-                                                    }
-                                                </p>
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <p className="font-medium text-gray-800">
+                                                        {part.partName}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400">
+                                                        Price: ₹{Number(part.price || 0).toFixed(2)}
+                                                    </p>
+                                                </div>
 
-                                                <p className="text-xs text-gray-400">
-                                                    Price: ₹
-                                                    {Number(
-                                                        part.price ||
-                                                        0
-                                                    ).toFixed(
-                                                        2
-                                                    )}
-                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => deletePart(index)}
+                                                    aria-label="Remove part"
+                                                    className={removeBtnClass}
+                                                >
+                                                    ×
+                                                </button>
                                             </div>
 
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                step="1"
-                                                value={
-                                                    part.quantity
-                                                }
-                                                onChange={(
-                                                    e
-                                                ) =>
-                                                    updatePartQuantity(
-                                                        index,
-                                                        e
-                                                            .target
-                                                            .value
-                                                    )
-                                                }
-                                                className="rounded-lg border px-3 py-2"
-                                            />
+                                            <div className="mt-2 grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-xs text-gray-500">
+                                                        Quantity
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        inputMode="numeric"
+                                                        min="1"
+                                                        step="1"
+                                                        value={part.quantity}
+                                                        onChange={(e) =>
+                                                            updatePartQuantity(index, e.target.value)
+                                                        }
+                                                        className={`${inputClass} mt-1`}
+                                                    />
+                                                </div>
 
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                value={
-                                                    part.priceUsed
-                                                }
-                                                onChange={(
-                                                    e
-                                                ) =>
-                                                    updatePartPrice(
-                                                        index,
-                                                        e
-                                                            .target
-                                                            .value
-                                                    )
-                                                }
-                                                className="rounded-lg border px-3 py-2"
-                                            />
-
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    deletePart(
-                                                        index
-                                                    )
-                                                }
-                                                className="text-xl text-red-500"
-                                            >
-                                                ×
-                                            </button>
+                                                <div>
+                                                    <label className="block text-xs text-gray-500">
+                                                        Price used (₹)
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        inputMode="decimal"
+                                                        min="0"
+                                                        step="0.01"
+                                                        value={part.priceUsed}
+                                                        onChange={(e) =>
+                                                            updatePartPrice(index, e.target.value)
+                                                        }
+                                                        className={`${inputClass} mt-1`}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
-                                    )
-                                )}
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* totals */}
+                            <div className="rounded-xl bg-gray-50 p-4">
+                                <div className="flex justify-between py-1 text-sm">
+                                    <span className="text-gray-600">Service Total</span>
+                                    <span className="font-medium">₹{serviceTotal.toFixed(2)}</span>
+                                </div>
+
+                                <div className="flex justify-between py-1 text-sm">
+                                    <span className="text-gray-600">Parts Total</span>
+                                    <span className="font-medium">₹{partsTotal.toFixed(2)}</span>
+                                </div>
+
+                                <div className="mt-2 flex justify-between border-t pt-2 text-lg font-bold">
+                                    <span>Grand Total</span>
+                                    <span>₹{grandTotal.toFixed(2)}</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="rounded-lg border bg-gray-50 p-4">
-                            <div className="flex justify-between py-1">
-                                <span className="text-gray-600">
-                                    Service Total
-                                </span>
-
-                                <span className="font-medium">
-                                    ₹
-                                    {serviceTotal.toFixed(
-                                        2
-                                    )}
-                                </span>
-                            </div>
-
-                            <div className="flex justify-between py-1">
-                                <span className="text-gray-600">
-                                    Parts Total
-                                </span>
-
-                                <span className="font-medium">
-                                    ₹
-                                    {partsTotal.toFixed(
-                                        2
-                                    )}
-                                </span>
-                            </div>
-
-                            <div className="mt-2 flex justify-between border-t pt-2 text-lg font-bold">
-                                <span>
-                                    Grand Total
-                                </span>
-
-                                <span>
-                                    ₹
-                                    {grandTotal.toFixed(
-                                        2
-                                    )}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-3 border-t pt-5">
+                        {/* sticky action bar: always reachable with the thumb */}
+                        <div className="flex shrink-0 gap-3 border-t bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="rounded-lg border px-5 py-2"
+                                className="flex-1 rounded-xl border border-gray-200 py-3 font-medium text-gray-700"
                             >
                                 Cancel
                             </button>
@@ -1218,7 +855,7 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
                             <button
                                 type="submit"
                                 disabled={isSaving}
-                                className="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white disabled:opacity-50"
+                                className="flex-[2] rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
                             >
                                 {isSaving
                                     ? "Saving..."

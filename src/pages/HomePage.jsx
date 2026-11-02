@@ -3,8 +3,16 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 
-import { fetchJobCards } from "../features/jobcard/JobCardSlice";
+import {
+    fetchJobCards,
+    clearSelectedJobCard,
+} from "../features/jobcard/JobCardSlice";
 import { fetchInvoiceByJobCardId } from "../features/invoice/InvoiceReducer";
+
+// Adjust these paths/names to match where your files actually live.
+import JobCardForm from "../components/jobcard/JobCardForm";
+import JobCardModal from "../components/jobcard/JobCardModal";
+import InvoiceView from "../components/invoice/InvoiceView";
 
 const WORKSHOP_NAME = "Ramnath Automobiles";
 const RECENT_LIMIT = 5;
@@ -19,10 +27,9 @@ const Icon = ({ name, className = "h-5 w-5" }) => {
         doc: "M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6",
         users:
             "M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM20 20v-1.5a3.5 3.5 0 0 0-2.5-3.3M15.5 4.2a3.5 3.5 0 0 1 0 6.6",
-        bell: "M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zM10 19a2 2 0 0 0 4 0",
+        user: "M20 21v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
         search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.5-4.5",
         clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
-        scan: "M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16",
         tag: "M3 12V4h8l10 10-8 8L3 12zM7.5 8.5h.01",
     };
 
@@ -214,7 +221,7 @@ const BottomNav = ({ onCreate }) => {
     };
 
     return (
-        <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-md -translate-x-1/2 border-t border-gray-100 bg-white">
+        <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-md -translate-x-1/2 border-t border-gray-100 bg-white print:hidden">
             <div className="relative flex items-end px-2 pb-1">
                 {renderItem(NAV_ITEMS[0])}
                 {renderItem(NAV_ITEMS[1])}
@@ -248,6 +255,10 @@ const HomePage = () => {
 
     const [search, setSearch] = useState("");
     const [openingInvoiceId, setOpeningInvoiceId] = useState(null);
+
+    // One piece of state controls every popup on this page:
+    // { type: "create" | "edit" | "view", id? } | { type: "invoice", invoice } | null
+    const [modal, setModal] = useState(null);
 
     useEffect(() => {
         dispatch(fetchJobCards());
@@ -288,12 +299,16 @@ const HomePage = () => {
             .slice(0, RECENT_LIMIT);
     }, [jobCards, search]);
 
-    const goCreate = () =>
-        navigate("/jobcards", { state: { openCreate: true } });
+    /* ----- open / close popups ----- */
+    const goCreate = () => setModal({ type: "create" });
+    const goView = (id) => setModal({ type: "view", id });
+    const goEdit = (id) => setModal({ type: "edit", id });
 
-    const goView = (id) => navigate("/jobcards", { state: { viewId: id } });
-
-    const goEdit = (id) => navigate("/jobcards", { state: { editId: id } });
+    const closeModal = () => {
+        setModal(null);
+        dispatch(clearSelectedJobCard()); // don't leak old data into the next popup
+        dispatch(fetchJobCards()); // refresh list + stats after create/edit
+    };
 
     const goInvoice = async (jobCardId) => {
         if (openingInvoiceId !== null) return;
@@ -309,12 +324,12 @@ const HomePage = () => {
 
             if (invoiceId == null) throw new Error("No invoice id");
 
-            navigate("/jobcards", { state: { invoiceId } });
+            // InvoiceView needs the full invoice object, not just its id.
+            setModal({ type: "invoice", invoice: { ...data, id: invoiceId } });
         } catch {
             toast.info(
                 "No invoice yet. Generate it from the Job Cards page."
             );
-            navigate("/jobcards");
         } finally {
             setOpeningInvoiceId(null);
         }
@@ -322,7 +337,7 @@ const HomePage = () => {
 
     return (
         <div className="mx-auto min-h-screen max-w-md bg-gray-100 pb-28">
-            <div className="flex flex-col gap-4 p-4">
+            <div className="flex flex-col gap-4 p-4 print:hidden">
                 {/* header + search */}
                 <div className="rounded-2xl bg-white p-4 shadow-sm">
                     <div className="flex items-center gap-3">
@@ -344,14 +359,12 @@ const HomePage = () => {
 
                         <button
                             type="button"
-                            onClick={() => navigate("/jobcards")}
-                            aria-label="Open job cards"
-                            className="relative flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600"
+                            // TODO: build the /account page and add its route.
+                            onClick={() => navigate("/account")}
+                            aria-label="Account"
+                            className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600"
                         >
-                            <Icon name="bell" />
-                            {stats.pending > 0 && (
-                                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
-                            )}
+                            <Icon name="user" />
                         </button>
                     </div>
 
@@ -407,25 +420,12 @@ const HomePage = () => {
                         Quick Actions
                     </p>
 
-                    <div className="mt-4 grid grid-cols-4 gap-2">
+                    <div className="mt-4 grid grid-cols-2 gap-2">
                         <QuickAction
                             label="New Card"
                             icon="plus"
                             iconClass="bg-blue-50 text-blue-600"
                             onClick={goCreate}
-                        />
-                        <QuickAction
-                            label="Scan Plate"
-                            icon="scan"
-                            iconClass="bg-purple-50 text-purple-600"
-                            // TODO: open camera / plate scanner in React Native.
-                            onClick={() => navigate("/vehicles")}
-                        />
-                        <QuickAction
-                            label="Billing"
-                            icon="doc"
-                            iconClass="bg-green-50 text-green-600"
-                            onClick={() => navigate("/jobcards")}
                         />
                         <QuickAction
                             label="Customers"
@@ -483,6 +483,30 @@ const HomePage = () => {
             </div>
 
             <BottomNav onCreate={goCreate} />
+
+            {/* ---------- popups (same components the Job Cards page uses) ---------- */}
+            <JobCardForm
+                key={modal?.type === "edit" ? `edit-${modal.id}` : "create"}
+                isOpen={modal?.type === "create" || modal?.type === "edit"}
+                jobCardId={modal?.type === "edit" ? modal.id : undefined}
+                onClose={closeModal}
+            />
+
+            <JobCardModal
+                isOpen={modal?.type === "view"}
+                jobCardId={modal?.type === "view" ? modal.id : undefined}
+                onClose={closeModal}
+            />
+
+            {/* InvoiceView is a full page, so it gets a full-screen overlay */}
+            {modal?.type === "invoice" && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-100 print:static print:overflow-visible">
+                    <InvoiceView
+                        invoice={modal.invoice}
+                        onBack={() => setModal(null)}
+                    />
+                </div>
+            )}
         </div>
     );
 };
