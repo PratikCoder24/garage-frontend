@@ -855,7 +855,7 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
                             <button
                                 type="submit"
                                 disabled={isSaving}
-                                className="flex-[2] rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
+                                className="flex-2 rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
                             >
                                 {isSaving
                                     ? "Saving..."
