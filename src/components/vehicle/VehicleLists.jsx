@@ -15,6 +15,7 @@ const EditInputs = ({
     editChassisNumber, setEditChassisNumber,
     editEngineNumber, setEditEngineNumber,
     editOdometer, setEditOdometer,
+    editVehicleType, setEditVehicleType,
 }) => (
     <div className="flex flex-col gap-2">
         <div className="grid grid-cols-2 gap-2">
@@ -31,17 +32,33 @@ const EditInputs = ({
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
         </div>
+
+        <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">
+                Vehicle Type
+            </label>
+
+            <select
+                value={editVehicleType}
+                onChange={(e) => setEditVehicleType(e.target.value)}
+                className="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+                <option value="">Select Vehicle Type</option>
+                <option value="MOTORCYCLE">Motorcycle</option>
+                <option value="SCOOTER">Scooter</option>
+            </select>
+        </div>
+
         <div>
             <input
                 value={editVehicleNumber}
                 onChange={(e) => setEditVehicleNumber(e.target.value.toUpperCase())}
                 onBlur={handleEditVehicleNumberBlur}
                 placeholder="Vehicle Number"
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                    editVehicleNumberWarning
-                        ? "border-red-300 focus:ring-red-400"
-                        : "border-gray-200 focus:ring-blue-500"
-                }`}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${editVehicleNumberWarning
+                    ? "border-red-300 focus:ring-red-400"
+                    : "border-gray-200 focus:ring-blue-500"
+                    }`}
             />
             {editVehicleNumberWarning && (
                 <p className="text-xs text-red-500 mt-1">⚠️ {editVehicleNumberWarning}</p>
@@ -86,6 +103,7 @@ const VehicleLists = () => {
     const [editVehicleNumberWarning, setEditVehicleNumberWarning] = useState(null);
     const [formOpen, setFormOpen] = useState(false);
     const [searchVehicleNumber, setSearchVehicleNumber] = useState("");
+    const [editVehicleType, setEditVehicleType] = useState("");
 
     useEffect(() => {
         dispatch(fetchAllVehicles());
@@ -111,6 +129,7 @@ const VehicleLists = () => {
         setEditOdometer(vehicle.odometer);
         setEditCustomerId(vehicle.customerId);
         setEditVehicleNumberWarning(null);
+        setEditVehicleType(vehicle.vehicleType);
     };
 
     const handleCancelEdit = () => {
@@ -123,6 +142,7 @@ const VehicleLists = () => {
         setEditOdometer("");
         setEditCustomerId("");
         setEditVehicleNumberWarning(null);
+        setEditVehicleType("");
     };
 
     const handleEditVehicleNumberBlur = async () => {
@@ -142,7 +162,7 @@ const VehicleLists = () => {
     };
 
     const handleUpdate = async (id) => {
-        if (!editModel.trim() || !editCompany.trim() || !editVehicleNumber.trim() || !editCustomerId) {
+        if (!editModel.trim() || !editCompany.trim() || !editVehicleNumber.trim() || !editCustomerId || !editVehicleType.trim()) {
             errorToast("Please fill in all fields");
             return;
         }
@@ -156,6 +176,7 @@ const VehicleLists = () => {
                 data: {
                     model: editModel.trim(),
                     companyName: editCompany.trim(),
+                    vehicleType: editVehicleType.trim(),
                     vehicleNumber: editVehicleNumber.trim().toUpperCase(),
                     chassisNumber: editChassisNumber.trim().toUpperCase(),
                     engineNumber: editEngineNumber.trim().toUpperCase(),
@@ -206,6 +227,7 @@ const VehicleLists = () => {
         editChassisNumber, setEditChassisNumber,
         editEngineNumber, setEditEngineNumber,
         editOdometer, setEditOdometer,
+        editVehicleType, setEditVehicleType,
     };
 
     return (
@@ -280,7 +302,11 @@ const VehicleLists = () => {
                                             </>
                                         ) : (
                                             <>
-                                                <td className="px-6 py-4 text-gray-800 font-medium">{vehicle.companyName} {vehicle.model}</td>
+                                                <td className="px-6 py-4 text-gray-800 font-medium">{vehicle.companyName} {vehicle.model}
+                                                    <p className="text-xs text-gray-500 font-normal">
+                                                        {vehicle.vehicleType === "MOTORCYCLE" ? "Motorcycle" : "Scooter"}
+                                                    </p>
+                                                </td>
                                                 <td className="px-6 py-4 text-gray-600">{vehicle.vehicleNumber}</td>
                                                 <td className="px-6 py-4 text-gray-600">{getCustomerName(vehicle.customerId)}</td>
                                                 <td className="px-6 py-4 text-gray-600">{vehicle.odometer} km</td>
@@ -337,6 +363,7 @@ const VehicleLists = () => {
                                             <p className="text-sm text-gray-500">{vehicle.vehicleNumber}</p>
                                             <p className="text-xs text-gray-400">{getCustomerName(vehicle.customerId)}</p>
                                             <p className="text-xs text-gray-400">{vehicle.odometer} km</p>
+                                            <p className="text-xs text-gray-500">{vehicle.vehicleType === "MOTORCYCLE" ? "Motorcycle" : "Scooter"}</p>
                                         </div>
                                         <div className="flex flex-col gap-2 shrink-0">
                                             <button

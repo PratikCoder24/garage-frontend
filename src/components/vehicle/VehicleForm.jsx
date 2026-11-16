@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { addVehicle } from "../../features/vehicle/VehicleReducer";
 import { fetchAllCustomers } from "../../features/customer/CustomerReducer";
 import { errorToast, successToast, warningToast } from "../../toast/Toast";
-import  {searchVehicle}  from "../../api/vehicleApi";
+import { searchVehicle } from "../../api/vehicleApi";
 
 const VehicleForm = ({ isOpen, onClose }) => {
     const dispatch = useDispatch();
@@ -19,6 +19,7 @@ const VehicleForm = ({ isOpen, onClose }) => {
     const [customerSearch, setCustomerSearch] = useState("");
     const [vehicleNumberWarning, setVehicleNumberWarning] = useState(null);
     const [chassisNumberWarning, setChassisNumberWarning] = useState(null);
+    const [vehicleType, setVehicleType] = useState("");
 
     const filteredCustomers = customers.filter((c) =>
         c.name.toLowerCase().includes(customerSearch.toLocaleLowerCase()) ||
@@ -26,16 +27,23 @@ const VehicleForm = ({ isOpen, onClose }) => {
     );
 
     const handleVehicleNumberBlur = async () => {
-        if (vehicleNumber.trim().length > 0) {
-            try {
-                const response = await searchVehicle(vehicleNumber.trim())
-                if (response.data) {
-                    setVehicleNumberWarning("A vehicle with this number already exists!!")
-                } else {
-                    setVehicleNumberWarning(null)
-                }
-            } catch {
-                setVehicleNumberWarning(null)
+        const number = vehicleNumber.trim().toUpperCase();
+
+        if (!number) {
+            setVehicleNumberWarning(null);
+            return;
+        }
+
+        try {
+            await searchVehicle(number);
+            // If search succeeds, the vehicle exists.
+            setVehicleNumberWarning("A vehicle with this number already exists!");
+        } catch (error) {
+            if (error.response?.status === 404) {
+                // 404 means this vehicle number is available.
+                setVehicleNumberWarning(null);
+            } else {
+                console.error("Vehicle search failed:", error);
             }
         }
     };
@@ -51,6 +59,7 @@ const VehicleForm = ({ isOpen, onClose }) => {
         setCustomerSearch("");
         setVehicleNumberWarning(null);
         setChassisNumberWarning(null);
+        setVehicleType("");
         onClose();
     }
 
@@ -62,7 +71,7 @@ const VehicleForm = ({ isOpen, onClose }) => {
     const handleSubmit = async (e) => {
         e.preventDefault()
 
-        if (!model || !companyName || !vehicleNumber || !customerId) {
+        if (!model || !companyName || !vehicleNumber || !customerId || !vehicleType) {
             errorToast("Please fill in all fields!!")
             return;
         }
@@ -77,15 +86,28 @@ const VehicleForm = ({ isOpen, onClose }) => {
                 model: model.trim(),
                 companyName: companyName.trim(),
                 vehicleNumber: vehicleNumber.trim().toUpperCase(),
-                chassisNumber: chassisNumber.trim().toUpperCase(),
-                engineNumber: engineNumber.trim().toUpperCase(),
-                odometer: Number(odometer),
+                chassisNumber: chassisNumber.trim() === ""
+                    ? null
+                    : chassisNumber.trim().toUpperCase(),
+
+                engineNumber: engineNumber.trim() === ""
+                    ? null
+                    : engineNumber.trim().toUpperCase(),
+
+                odometer: odometer.trim() === ""
+                    ? null
+                    : Number(odometer),
                 customerId: Number(customerId),
+                vehicleType: vehicleType.trim()
             })).unwrap();
             successToast("vehicle added successfully!");
             handleClose();
         } catch (error) {
-            errorToast(error || "Something went Wrong!!")
+            errorToast(
+                typeof error === "string"
+                    ? error
+                    : error?.message || "Something went wrong!"
+            );
         }
     }
 
@@ -171,17 +193,36 @@ const VehicleForm = ({ isOpen, onClose }) => {
 
                     <div className="flex flex-col gap-1">
                         <label className="text-sm font-medium text-gray-700">
+                            Vehicle Type <span className="text-red-500">*</span>
+                        </label>
+
+                        <select
+                            value={vehicleType}
+                            onChange={(e) => setVehicleType(e.target.value)}
+                            className="border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        >
+                            <option value="">Select Vehicle Type</option>
+                            <option value="MOTORCYCLE">Motorcycle</option>
+                            <option value="SCOOTER">Scooter</option>
+                        </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                        <label className="text-sm font-medium text-gray-700">
                             Vehicle Number <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="text"
                             value={vehicleNumber}
-                            onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+                            onChange={(e) => {
+                                setVehicleNumber(e.target.value.toUpperCase());
+                                setVehicleNumberWarning(null);
+                            }}
                             onBlur={handleVehicleNumberBlur}
                             placeholder="e.g. MH13AB1234"
                             className={`border rounded-lg px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition ${vehicleNumberWarning
-                                    ? "border-red-300 focus:ring-red-400"
-                                    : "border-gray-200 focus:ring-blue-500"
+                                ? "border-red-300 focus:ring-red-400"
+                                : "border-gray-200 focus:ring-blue-500"
                                 }`}
                         />
                         {vehicleNumberWarning && (

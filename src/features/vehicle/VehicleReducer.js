@@ -15,7 +15,12 @@ export const addVehicle = createAsyncThunk("/vehicles/addVehicle", async(data, t
         const response = await vehicleApi.addVehicle(data);
         return response.data;
     } catch (error) {
-        return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to add vehicle!");
+        const message =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to add vehicle!";
+
+    return thunkAPI.rejectWithValue(message);
     }
 })
 
@@ -75,7 +80,7 @@ const vehicleSlice = createSlice({
         })
         .addCase(addVehicle.rejected, (state,action) => {
             state.isLoading = false;
-            state.error = action.payload;
+            state.error = null;
         })
         .addCase(updateVehicle.pending,(state) => {
             state.isLoading = true;
