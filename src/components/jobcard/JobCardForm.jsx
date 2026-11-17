@@ -5,6 +5,7 @@ import { fetchAllCustomers } from "../../features/customer/CustomerReducer";
 import { fetchAllVehicles } from "../../features/vehicle/VehicleReducer";
 import { fetchAllServices } from "../../features/servicess/ServiceReducer";
 import { fetchAllParts } from "../../features/parts/PartsReducer";
+import { saveFuelInReading } from "../../features/jobcard/JobCardSlice";
 
 import {
     fetchJobCardById,
@@ -85,6 +86,11 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
     const [selectedServices, setSelectedServices] = useState([]);
     const [selectedParts, setSelectedParts] = useState([]);
 
+    const [fuelMethod, setFuelMethod] = useState("");
+    const [fuelLevel, setFuelLevel] = useState("");
+    const [meterStatus, setMeterStatus] = useState("");
+    const [reserveStatus, setReserveStatus] = useState("");
+
     const isEdit = Boolean(jobCardId);
 
     useEffect(() => {
@@ -114,6 +120,10 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
             setPartSearch("");
             setSelectedServices([]);
             setSelectedParts([]);
+            setFuelMethod("");
+            setFuelLevel("");
+            setMeterStatus("");
+            setReserveStatus("");
             return;
         }
 
@@ -457,11 +467,65 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
             return;
         }
 
+        if (!isEdit) {
+            if (!fuelMethod) {
+                toast.error("Please select a fuel recording method.");
+                return;
+            }
+
+            if (fuelMethod === "METER") {
+                if (!meterStatus) {
+                    toast.error("Please select meter status.");
+                    return;
+                }
+
+                if (
+                    (meterStatus === "WORKING" || meterStatus === "FAULTY") &&
+                    (fuelLevel === "" ||
+                        Number(fuelLevel) < 0 ||
+                        Number(fuelLevel) > 100)
+                ) {
+                    toast.error("Please enter a fuel level between 0 and 100.");
+                    return;
+                }
+            }
+
+            if (fuelMethod === "RESERVE" && !reserveStatus) {
+                toast.error("Please select reserve status.");
+                return;
+            }
+        }
+
         const payload = {
             vehicleId: Number(vehicleId),
             condition: condition.trim(),
             deliveryDate: deliveryDate || null,
         };
+        let fuelReadingPayload = null;
+
+        if (!isEdit) {
+            if (fuelMethod === "METER") {
+                fuelReadingPayload = {
+                    readingMode:
+                        meterStatus === "WORKING" ? "METER" :
+                            meterStatus === "FAULTY" ? "VISUAL" :
+                                "UNKNOWN",
+                    fuelLevel:
+                        meterStatus === "WORKING" || meterStatus === "FAULTY"
+                            ? Number(fuelLevel)
+                            : null,
+                    meterStatus,
+                    reserveStatus: "NOT_APPLICABLE",
+                };
+            } else if (fuelMethod === "RESERVE") {
+                fuelReadingPayload = {
+                    readingMode: "UNKNOWN",
+                    fuelLevel: null,
+                    meterStatus: "NOT_APPLICABLE",
+                    reserveStatus,
+                };
+            }
+        }
 
         try {
             let id = jobCardId;
@@ -477,6 +541,15 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
 
                 if (!id) {
                     throw new Error("Created job card ID was not returned.");
+                }
+
+                if (fuelReadingPayload) {
+                    await dispatch(
+                        saveFuelInReading({
+                            jobCardId: id,
+                            data: fuelReadingPayload,
+                        })
+                    ).unwrap();
                 }
             }
 
@@ -625,6 +698,140 @@ const JobCardForm = ({ jobCardId, isOpen, onClose }) => {
                                     className={inputClass}
                                 />
                             </div>
+                            {!isEdit && (
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-semibold">Fuel Reading</h3>
+
+                                    <div>
+                                        <label className={labelClass}>Recording Method</label>
+                                        <select
+                                            value={fuelMethod}
+                                            onChange={(e) => {
+                                                setFuelMethod(e.target.value);
+                                                setMeterStatus("");
+                                                setFuelLevel("");
+                                                setReserveStatus("");
+                                            }}
+                                            className={inputClass}
+                                        >
+                                            <option value="">Select method</option>
+                                            <option value="METER">Meter</option>
+                                            <option value="RESERVE">Reserve</option>
+                                        </select>
+                                    </div>
+
+                                    {fuelMethod === "METER" && (
+                                        <div>
+                                            <label className={labelClass}>Meter Status</label>
+                                            <select
+                                                value={meterStatus}
+                                                onChange={(e) => {
+                                                    setMeterStatus(e.target.value);
+                                                    setFuelLevel("");
+                                                }}
+                                                className={inputClass}
+                                            >
+                                                <option value="">Select meter status</option>
+                                                <option value="WORKING">Working</option>
+                                                <option value="FAULTY">Faulty</option>
+                                                <option value="UNAVAILABLE">Unavailable</option>
+                                                <option value="NOT_APPLICABLE">Not applicable</option>
+                                            </select>
+                                        </div>
+                                    )}
+
+
+                                    {fuelMethod === "METER" &&
+                                        (meterStatus === "WORKING" || meterStatus === "FAULTY") && (
+                                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                                                <div className="mb-4 flex items-center justify-between">
+                                                    <label className="text-sm font-semibold text-gray-700">
+                                                        Fuel Level
+                                                    </label>
+
+                                                    <span className="text-2xl font-bold text-blue-600">
+                                                        {fuelLevel === "" ? "0%" : `${fuelLevel}%`}
+                                                    </span>
+                                                </div>
+
+                                                {/* Visual fuel gauge */}
+                                                <div className="relative mb-4 h-8 overflow-hidden rounded-lg border border-gray-300 bg-white">
+                                                    <div
+                                                        className={`h-full transition-all duration-300 ${Number(fuelLevel) <= 20
+                                                                ? "bg-red-500"
+                                                                : Number(fuelLevel) <= 50
+                                                                    ? "bg-yellow-400"
+                                                                    : "bg-green-500"
+                                                            }`}
+                                                        style={{
+                                                            width: `${fuelLevel === "" ? 0 : Number(fuelLevel)}%`,
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                {/* Percentage slider */}
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max="100"
+                                                    step="1"
+                                                    value={fuelLevel === "" ? 0 : fuelLevel}
+                                                    onChange={(e) => setFuelLevel(e.target.value)}
+                                                    className="w-full cursor-pointer accent-blue-600"
+                                                />
+
+                                                <div className="mt-1 flex justify-between text-xs text-gray-500">
+                                                    <span>Empty</span>
+                                                    <span>Half</span>
+                                                    <span>Full</span>
+                                                </div>
+
+                                                {/* Manual percentage input */}
+                                                <div className="mt-4">
+                                                    <label className={labelClass}>
+                                                        Enter Percentage Manually
+                                                    </label>
+
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max="100"
+                                                        value={fuelLevel}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value;
+
+                                                            if (value === "") {
+                                                                setFuelLevel("");
+                                                            } else if (
+                                                                Number(value) >= 0 &&
+                                                                Number(value) <= 100
+                                                            ) {
+                                                                setFuelLevel(value);
+                                                            }
+                                                        }}
+                                                        placeholder="0 - 100"
+                                                        className={inputClass}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                    {fuelMethod === "RESERVE" && (
+                                        <div>
+                                            <label className={labelClass}>Reserve Status</label>
+                                            <select
+                                                value={reserveStatus}
+                                                onChange={(e) => setReserveStatus(e.target.value)}
+                                                className={inputClass}
+                                            >
+                                                <option value="">Select reserve status</option>
+                                                <option value="IN_RESERVE">ON</option>
+                                                <option value="NOT_IN_RESERVE">OFF</option>
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* services */}
                             <div>

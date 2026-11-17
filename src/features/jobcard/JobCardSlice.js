@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import * as jobCardApi from "../../api/jobCardApi.js";
+import * as fuelReadingApi from "../../api/fuelReadingApi.js";
 
 export const fetchJobCards = createAsyncThunk(
     "/jobcards/fetchJobCards",
@@ -261,6 +262,31 @@ export const getPartsTotal = createAsyncThunk(
         }
     }
 );
+
+export const getFuelReadingByJobCardId = createAsyncThunk("/jobcards/getFuelReadingByJobCardId", async (jobCardId, thunkAPI) => {
+    try {
+        const response = await fuelReadingApi.getFuelReadings(jobCardId);
+        return response.data;
+    } catch (error) {
+        return thunkAPI.rejectWithValue(
+            error.response?.data?.message ||
+                "Failed to fetch fuel readings for job card!"
+        );
+    }
+});
+
+export const saveFuelInReading = createAsyncThunk("/jobcards/saveFuelInReading", async ({ jobCardId, data }, thunkAPI) => {
+    try {
+        const response = await fuelReadingApi.saveInReading(jobCardId, data);  
+        return response.data;
+    } catch (error) {
+        return thunkAPI.rejectWithValue(
+                error.response?.data?.error ||
+                error.response?.data?.message ||
+                "Failed to save fuel in reading for job card!"
+            );
+    }
+}); 
 
 const initialState = {
     jobCards: [],
@@ -598,7 +624,37 @@ export const jobCardSlice = createSlice({
                 (state, action) => {
                     state.error = action.payload;
                 }
-            );
+            )
+            
+            .addCase(getFuelReadingByJobCardId.pending, (state) => {
+                state.isLoading = true;
+                state.error = null;
+            })
+
+            .addCase(getFuelReadingByJobCardId.fulfilled, (state, action) => {
+                state.isLoading = false;
+                if (state.selectedJobCard) {
+                    state.selectedJobCard.fuelReadings = action.payload || null;
+                }
+                state.error = null;
+            })
+            .addCase(getFuelReadingByJobCardId.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload;
+            })
+            .addCase(saveFuelInReading.pending, (state) => {
+                state.isSaving = true;
+                state.error = null;
+            })
+            .addCase(saveFuelInReading.fulfilled, (state, action) => {
+                state.isSaving = false;
+                state.error = null;
+            })
+            .addCase(saveFuelInReading.rejected, (state, action) => {
+                state.isSaving = false;
+                state.error = action.payload;
+            })
+
     },
 });
 

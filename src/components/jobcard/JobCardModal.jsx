@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import {
     fetchJobCardById,
     clearSelectedJobCard,
+    getFuelReadingByJobCardId,
 } from "../../features/jobcard/JobCardSlice";
 
 const Field = ({ label, children }) => (
@@ -19,6 +20,7 @@ const JobCardModal = ({ jobCardId, isOpen, onClose }) => {
     const { selectedJobCard, isLoadingSelectedJobCard, error } = useSelector(
         (state) => state.jobcards
     );
+    const fuelReading = useSelector((state) => state.jobcards.selectedJobCard?.fuelReadings?.inReading);
 
     useEffect(() => {
         if (!isOpen || !jobCardId) {
@@ -27,6 +29,13 @@ const JobCardModal = ({ jobCardId, isOpen, onClose }) => {
 
         dispatch(fetchJobCardById(jobCardId))
             .unwrap()
+            .then(() => {
+                return dispatch(getFuelReadingByJobCardId(jobCardId))
+                    .unwrap()
+                    .catch((error) => {
+                        console.error("Failed to load fuel reading:", error);
+                    });
+            })
             .catch((error) => {
                 toast.error(
                     typeof error === "string"
@@ -128,6 +137,78 @@ const JobCardModal = ({ jobCardId, isOpen, onClose }) => {
                                     </p>
                                 </div>
                             </div>
+
+
+                            {/* fuel reading */}
+                            <div>
+                                <h3 className="mb-2 font-semibold text-gray-800">
+                                    Fuel Reading at Intake
+                                </h3>
+
+                                {!fuelReading ? (
+                                    <div className="rounded-xl border border-dashed p-4 text-sm text-gray-400">
+                                        No fuel reading recorded
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 rounded-xl bg-gray-50 p-4">
+
+                                        <Field label="Reading Mode">
+                                            {fuelReading.readingMode || "-"}
+                                        </Field>
+
+                                        {fuelReading.fuelLevel != null && (
+                                            <div>
+                                                <div className="mb-2 flex items-center justify-between">
+                                                    <span className="text-sm font-medium text-gray-600">
+                                                        Fuel Level
+                                                    </span>
+
+                                                    <span className="text-xl font-bold text-gray-800">
+                                                        {Number(fuelReading.fuelLevel)}%
+                                                    </span>
+                                                </div>
+
+                                                <div className="h-4 w-full overflow-hidden rounded-full bg-gray-200">
+                                                    <div
+                                                        className={`h-full rounded-full transition-all duration-500 ${Number(fuelReading.fuelLevel) <= 20
+                                                                ? "bg-red-500"
+                                                                : Number(fuelReading.fuelLevel) <= 50
+                                                                    ? "bg-yellow-500"
+                                                                    : "bg-green-500"
+                                                            }`}
+                                                        style={{
+                                                            width: `${Math.min(
+                                                                100,
+                                                                Math.max(0, Number(fuelReading.fuelLevel))
+                                                            )}%`,
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                <div className="mt-1 flex justify-between text-xs text-gray-400">
+                                                    <span>Empty</span>
+                                                    <span>Full</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {fuelReading.meterStatus &&
+                                            fuelReading.meterStatus !== "NOT_APPLICABLE" && (
+                                                <Field label="Meter Status">
+                                                    {fuelReading.meterStatus.replaceAll("_", " ")}
+                                                </Field>
+                                            )}
+
+                                        {fuelReading.reserveStatus &&
+                                            fuelReading.reserveStatus !== "NOT_APPLICABLE" && (
+                                                <Field label="Reserve Status">
+                                                    {fuelReading.reserveStatus.replaceAll("_", " ")}
+                                                </Field>
+                                            )}
+                                    </div>
+                                )}
+                            </div>
+
 
                             {/* services */}
                             <div>
