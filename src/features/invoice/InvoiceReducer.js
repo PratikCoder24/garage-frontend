@@ -24,7 +24,21 @@ export const fetchInvoiceByJobCardId = createAsyncThunk("/invoices/fetchInvoiceB
         const response = await invoiceApi.getInvoiceByJobCardId(jobcardId);
         return response.data;
     } catch (error) {
-        return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch Invoice by Job Card ID!")
+        return thunkAPI.rejectWithValue({
+            status: error.response?.status,
+            message:
+                error.response?.data?.message ||
+                "Failed to fetch Invoice by Job Card ID!"
+        })
+    }
+})
+
+export const fetchAllInvoices = createAsyncThunk("/invoices/fetchAllInvoices", async (_, thunkAPI) => {
+    try {
+        const response = await invoiceApi.getAllInvoices(); 
+        return response.data;
+    } catch (error) {
+        return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch all Invoices!")
     }
 })
 
@@ -118,6 +132,18 @@ export const invoiceSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload;
             })
+            .addCase(fetchAllInvoices.pending, (state) => {
+                state.isLoading = true;
+                state.error = null;
+            })
+            .addCase(fetchAllInvoices.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.invoices = action.payload || [];
+            })
+            .addCase(fetchAllInvoices.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload;
+            });
     }
 
 })

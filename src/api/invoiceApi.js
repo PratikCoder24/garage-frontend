@@ -8,3 +8,6 @@ export const getInvoice = (invoiceId) =>
 
 export const getInvoiceByJobCardId = (jobCardId) =>
     axiosInstance.get(`invoices/job-card/${jobCardId}`);
+
+export const getAllInvoices = () =>
+    axiosInstance.get(`invoices/all`);

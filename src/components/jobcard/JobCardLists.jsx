@@ -11,6 +11,7 @@ import {
 import {
     generateInvoice,
     fetchInvoiceByJobCardId,
+    fetchAllInvoices,
 } from "../../features/invoice/InvoiceReducer";
 
 const JobCardLists = ({ onView, onEdit, onViewInvoice }) => {
@@ -41,82 +42,42 @@ const JobCardLists = ({ onView, onEdit, onViewInvoice }) => {
     const getStatus = (jobCard) =>
         String(jobCard?.status ?? "PENDING").toUpperCase();
 
-    // Load job cards, then load any existing invoices.
+    // Load job cards and existing invoices.
     useEffect(() => {
-        let cancelled = false;
-
-        const loadData = async () => {
-            try {
-                const cards = await dispatch(fetchJobCards()).unwrap();
-
-                if (cancelled) return;
-
-                const completedCards = cards.filter(
-                    (card) => getStatus(card) === "COMPLETED"
+        dispatch(fetchJobCards())
+            .unwrap()
+            .catch((err) => {
+                toast.error(
+                    typeof err === "string"
+                        ? err
+                        : err?.message || "Failed to fetch job cards."
                 );
+            });
 
-                const results = await Promise.all(
-                    completedCards.map(async (card) => {
-                        const jobCardId = getJobCardId(card);
+        dispatch(fetchAllInvoices())
+            .unwrap()
+            .then((invoices) => {
+                const invoiceMap = {};
 
-                        try {
-                            const response = await dispatch(
-                                fetchInvoiceByJobCardId(jobCardId)
-                            ).unwrap();
+                invoices.forEach((invoice) => {
+                    if (invoice.jobCardId != null) {
+                        invoiceMap[invoice.jobCardId] = {
+                            ...invoice,
+                            id: invoice.invoiceId,
+                        };
+                    }
+                });
 
-                            // Supports either a direct DTO or a wrapped response.
-                            const data = response?.data ?? response;
-
-                            const invoice = {
-                                ...data,
-                                id:
-                                    data?.id ??
-                                    data?.invoiceId ??
-                                    data?.invoice_id,
-                            };
-
-                            return invoice.id != null
-                                ? [jobCardId, invoice]
-                                : null;
-                        } catch (err) {
-                            // A 404 means no invoice exists yet.
-                            // Do not show an error toast for that case.
-                            if (
-                                err?.status !== 404 &&
-                                err?.response?.status !== 404
-                            ) {
-                                console.error(
-                                    `Failed to load invoice for job card ${jobCardId}:`,
-                                    err
-                                );
-                            }
-
-                            return null;
-                        }
-                    })
+                setGeneratedInvoices(invoiceMap);
+            })
+            .catch((err) => {
+                console.error("Failed to fetch all invoices:", err);
+                toast.error(
+                    typeof err === "string"
+                        ? err
+                        : err?.message || "Failed to fetch invoices."
                 );
-
-                if (!cancelled) {
-                    setGeneratedInvoices(
-                        Object.fromEntries(results.filter(Boolean))
-                    );
-                }
-            } catch (err) {
-                if (!cancelled) {
-                    toast.error(
-                        typeof err === "string"
-                            ? err
-                            : err?.message || "Failed to fetch job cards."
-                    );
-                }
-            }
-        };
-
-        loadData();
-
-        return () => {
-            cancelled = true;
-        };
+            });
     }, [dispatch]);
 
     const filteredJobCards = useMemo(() => {
@@ -285,7 +246,7 @@ const JobCardLists = ({ onView, onEdit, onViewInvoice }) => {
         onViewInvoice(invoiceId);
     };
 
-    if (isLoading) {
+    if (isLoading && jobCards.length === 0) {
         return (
             <div className="rounded-xl border bg-white p-8 text-center text-sm text-gray-500">
                 Loading job cards...
@@ -477,11 +438,10 @@ const JobCardLists = ({ onView, onEdit, onViewInvoice }) => {
                                             type="button"
                                             disabled={isLocked}
                                             onClick={() => onEdit?.(id)}
-                                            className={`w-full rounded-lg px-4 py-2 text-sm font-medium md:w-auto ${
-                                                isLocked
-                                                    ? "cursor-not-allowed bg-gray-200 text-gray-400"
-                                                    : "bg-blue-600 text-white hover:bg-blue-700"
-                                            }`}
+                                            className={`w-full rounded-lg px-4 py-2 text-sm font-medium md:w-auto ${isLocked
+                                                ? "cursor-not-allowed bg-gray-200 text-gray-400"
+                                                : "bg-blue-600 text-white hover:bg-blue-700"
+                                                }`}
                                         >
                                             Edit
                                         </button>

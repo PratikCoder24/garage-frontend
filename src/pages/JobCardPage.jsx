@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 
 import JobCardForm from "../components/jobcard/JobCardForm";
@@ -16,6 +17,8 @@ const JobCardPage = () => {
     const [selectedJobCardId, setSelectedJobCardId] = useState(null);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
 
+    const scrollPosition = useRef(0);
+
     const handleView = (id) => {
         setSelectedJobCardId(id);
         setShowViewModal(true);
@@ -27,6 +30,8 @@ const JobCardPage = () => {
     };
 
     const handleViewInvoice = async (invoiceId) => {
+        scrollPosition.current = window.scrollY;
+
         try {
             const result = await dispatch(
                 fetchInvoices(invoiceId)
@@ -36,6 +41,17 @@ const JobCardPage = () => {
         } catch (error) {
             console.error("Failed to load invoice:", error);
         }
+    };
+
+    const handleBackFromInvoice = () => {
+        setSelectedInvoice(null);
+
+        requestAnimationFrame(() => {
+            window.scrollTo({
+                top: scrollPosition.current,
+                behavior: "instant",
+            });
+        });
     };
 
     const handleCreateNew = () => {
@@ -55,33 +71,33 @@ const JobCardPage = () => {
 
     return (
         <div className="p-4 md:p-6">
-            {selectedInvoice ? (
+            <div className={selectedInvoice ? "hidden" : ""}>
+                <div className="mb-6 flex items-center justify-between">
+                    <h1 className="text-2xl font-bold text-gray-800">
+                        Job Cards
+                    </h1>
+
+                    <button
+                        type="button"
+                        onClick={handleCreateNew}
+                        className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+                    >
+                        + Create Job Card
+                    </button>
+                </div>
+
+                <JobCardLists
+                    onView={handleView}
+                    onEdit={handleEdit}
+                    onViewInvoice={handleViewInvoice}
+                />
+            </div>
+
+            {selectedInvoice && (
                 <InvoiceView
                     invoice={selectedInvoice}
-                    onBack={() => setSelectedInvoice(null)}
+                    onBack={handleBackFromInvoice}
                 />
-            ) : (
-                <>
-                    <div className="mb-6 flex items-center justify-between">
-                        <h1 className="text-2xl font-bold text-gray-800">
-                            Job Cards
-                        </h1>
-
-                        <button
-                            type="button"
-                            onClick={handleCreateNew}
-                            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
-                        >
-                            + Create Job Card
-                        </button>
-                    </div>
-
-                    <JobCardLists
-                        onView={handleView}
-                        onEdit={handleEdit}
-                        onViewInvoice={handleViewInvoice}
-                    />
-                </>
             )}
 
             {!selectedInvoice && (
